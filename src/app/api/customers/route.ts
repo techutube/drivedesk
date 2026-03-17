@@ -5,7 +5,9 @@ import Customer from '@/models/Customer';
 export async function GET() {
   try {
     await connectToDatabase();
-    const customers = await Customer.find({}).sort({ createdAt: -1 });
+    const customers = await Customer.find({})
+      .populate('history.changedBy', 'name')
+      .sort({ createdAt: -1 });
     return NextResponse.json(customers);
   } catch (error) {
     return NextResponse.json({ error: 'Internal Server Error' }, { status: 500 });
