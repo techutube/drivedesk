@@ -1,0 +1,4 @@
+node_modules
+*.sst
+*.meta
+*.next

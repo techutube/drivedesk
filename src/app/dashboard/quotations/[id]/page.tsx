@@ -1,0 +1,384 @@
+'use client';
+
+import { use, useEffect, useState } from 'react';
+import jsPDF from 'jspdf';
+import html2canvas from 'html2canvas';
+
+export default function QuotationViewPage({ params }: { params: Promise<{ id: string }> }) {
+  const { id } = use(params);
+  const [quotation, setQuotation] = useState<any>(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    fetch(`/api/quotations/${id}`)
+      .then(res => res.json())
+      .then(data => {
+        setQuotation(data);
+        setLoading(false);
+      })
+      .catch(err => {
+        console.error(err);
+        setLoading(false);
+      });
+  }, [id]);
+
+  const generatePDF = () => {
+    const input = document.getElementById('pdf-content');
+    if (!input) return;
+
+    // A4 size: 210 x 297 mm
+    html2canvas(input, { scale: 2 }).then((canvas) => {
+      const imgData = canvas.toDataURL('image/png');
+      const pdf = new jsPDF('p', 'mm', 'a4');
+      const pdfWidth = pdf.internal.pageSize.getWidth();
+      const pdfHeight = (canvas.height * pdfWidth) / canvas.width;
+      
+      pdf.addImage(imgData, 'PNG', 0, 0, pdfWidth, pdfHeight);
+      pdf.save(`${quotation.quotationNumber}.pdf`);
+    });
+  };
+
+  if (loading) return <div className="p-8 text-center">Loading quotation document...</div>;
+  if (!quotation) return <div className="p-8 text-center">Quotation not found.</div>;
+
+  return (
+    <div className="view-page">
+      <div className="actions-bar">
+        <button className="btn btn-primary" onClick={generatePDF}>📄 Download PDF</button>
+      </div>
+
+      <div className="pdf-container">
+        {/* The section we will capture for PDF */}
+        <div id="pdf-content" className="pdf-document">
+          <div className="doc-header">
+            <div className="dealer-info">
+              <h1>DriveDesk</h1>
+              <p>Authorized Dealership Central</p>
+              <p>Main Road, City Center - 400001</p>
+              <p>Ph: +91 1800 209 7979</p>
+            </div>
+            <div className="doc-meta">
+              <h2>PROFORMA QUOTATION</h2>
+              <table className="meta-table">
+                <tbody>
+                  <tr><td>Quote No:</td><td><strong>{quotation.quotationNumber}</strong></td></tr>
+                  <tr><td>Date:</td><td>{new Date(quotation.createdAt).toLocaleDateString()}</td></tr>
+                  <tr><td>Status:</td><td>{quotation.status}</td></tr>
+                  <tr><td>Sales Rep:</td><td>{quotation.salesperson?.name || 'Assigned Agent'}</td></tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          <div className="info-grid">
+            <div className="customer-info doc-section">
+              <h3>Customer Details</h3>
+              <p><strong>Name:</strong> {quotation.customer?.name}</p>
+              <p><strong>Phone:</strong> {quotation.customer?.phone}</p>
+              <p><strong>Address:</strong> {quotation.customer?.address || '-'}, {quotation.customer?.city || '-'} - {quotation.customer?.state || '-'}</p>
+            </div>
+
+            <div className="vehicle-info doc-section">
+              <h3>Vehicle Details</h3>
+              <p><strong>Model:</strong> {quotation.car?.name} {quotation.car?.variant}</p>
+              <p><strong>Color:</strong> {quotation.selectedColor}</p>
+              <p><strong>Powertrain:</strong> {quotation.car?.fuelType} • {quotation.car?.transmission}</p>
+            </div>
+          </div>
+
+          {quotation.accessories && quotation.accessories.length > 0 && (
+            <div className="doc-section">
+              <h3>Selected Accessories</h3>
+              <table className="pricing-table">
+                <thead>
+                  <tr>
+                    <th>Accessory Name</th>
+                    <th>Category</th>
+                    <th className="text-right">Price (₹)</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {quotation.accessories.map((acc: any) => (
+                    <tr key={acc._id}>
+                      <td>{acc.name}</td>
+                      <td>{acc.category}</td>
+                      <td className="text-right">{acc.price?.toLocaleString()}</td>
+                    </tr>
+                  ))}
+                  <tr className="subtotal">
+                    <td colSpan={2}><strong>Accessories Total</strong></td>
+                    <td className="text-right"><strong>{quotation.pricing?.accessoriesTotal?.toLocaleString()}</strong></td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          )}
+
+          <div className="price-breakdown doc-section">
+            <h3>Comprehensive Price Breakdown</h3>
+            <table className="pricing-table">
+              <thead>
+                <tr>
+                  <th>Description</th>
+                  <th className="text-right">Amount (₹)</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td>Base Price (Before Tax)</td>
+                  <td className="text-right">{quotation.pricing?.subTotal?.toLocaleString()}</td>
+                </tr>
+                <tr>
+                  <td>GST & Cess Adjustments</td>
+                  <td className="text-right">{quotation.pricing?.gstTotal?.toLocaleString()}</td>
+                </tr>
+                <tr className="subtotal">
+                  <td><strong>Ex-Showroom Price</strong></td>
+                  <td className="text-right"><strong>{quotation.pricing?.exShowroom?.toLocaleString()}</strong></td>
+                </tr>
+                
+                {quotation.charges?.registration > 0 && (
+                <tr>
+                  <td>Registration / RTO</td>
+                  <td className="text-right">{quotation.charges.registration.toLocaleString()}</td>
+                </tr>
+                )}
+                {quotation.charges?.insurance > 0 && (
+                <tr>
+                  <td>Comprehensive Insurance</td>
+                  <td className="text-right">{quotation.charges.insurance.toLocaleString()}</td>
+                </tr>
+                )}
+                {quotation.charges?.handling > 0 && (
+                <tr>
+                  <td>Handling Charges</td>
+                  <td className="text-right">{quotation.charges.handling.toLocaleString()}</td>
+                </tr>
+                )}
+                {quotation.charges?.fastag > 0 && (
+                <tr>
+                  <td>FASTag</td>
+                  <td className="text-right">{quotation.charges.fastag.toLocaleString()}</td>
+                </tr>
+                )}
+                {quotation.charges?.extendedWarranty > 0 && (
+                <tr>
+                  <td>Extended Warranty</td>
+                  <td className="text-right">{quotation.charges.extendedWarranty.toLocaleString()}</td>
+                </tr>
+                )}
+                
+                {quotation.pricing?.accessoriesTotal > 0 && (
+                <tr>
+                  <td>Accessories Total</td>
+                  <td className="text-right">{quotation.pricing?.accessoriesTotal?.toLocaleString()}</td>
+                </tr>
+                )}
+
+                {quotation.pricing?.discountTotal > 0 && (
+                <tr className="discount">
+                  <td>Less: Total Dealership Discounts</td>
+                  <td className="text-right">- {quotation.pricing.discountTotal.toLocaleString()}</td>
+                </tr>
+                )}
+                
+                {quotation.pricing?.exchangeValue > 0 && (
+                <tr className="discount">
+                  <td>Less: Exchange Vehicle Value</td>
+                  <td className="text-right">- {quotation.pricing.exchangeValue.toLocaleString()}</td>
+                </tr>
+                )}
+              </tbody>
+              <tfoot>
+                <tr className="final-row">
+                  <td>NET ON-ROAD PRICE</td>
+                  <td className="text-right">₹{quotation.pricing?.finalOnRoadPrice?.toLocaleString()}</td>
+                </tr>
+              </tfoot>
+            </table>
+          </div>
+
+          <div className="terms-section doc-section">
+            <h3>Terms & Conditions</h3>
+            <ul>
+              <li>This quotation is valid for 15 days from the date of issue.</li>
+              <li>Delivery is subject to availability of the model and color from the manufacturer.</li>
+              <li>Prices and statutory levies are subject to change without prior notice. Price applicable at the time of invoice will be charged.</li>
+              <li>Booking amount is non-refundable in case of cancellation due to changes in regulatory policies.</li>
+            </ul>
+          </div>
+
+          <div className="signatures">
+            <div className="sig-box">
+              <div className="line"></div>
+              <p>Customer Signature</p>
+            </div>
+            <div className="sig-box">
+              <div className="line"></div>
+              <p>Authorized Dealership Signatory</p>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <style jsx>{`
+        .view-page {
+          display: flex;
+          flex-direction: column;
+          gap: var(--spacing-md);
+        }
+        .actions-bar {
+          display: flex;
+          justify-content: flex-end;
+          padding-bottom: var(--spacing-sm);
+        }
+        
+        .pdf-container {
+          background-color: #525659;
+          padding: 2rem;
+          display: flex;
+          justify-content: center;
+          overflow-x: auto;
+        }
+
+        .pdf-document {
+          background-color: white;
+          width: 210mm; /* A4 width */
+          min-height: 297mm; /* A4 height */
+          padding: 20mm;
+          box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+          color: #333;
+          font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
+        }
+
+        .doc-header {
+          display: flex;
+          justify-content: space-between;
+          border-bottom: 3px solid var(--brand-blue);
+          padding-bottom: 20px;
+          margin-bottom: 20px;
+        }
+
+        .dealer-info h1 {
+          color: var(--brand-blue);
+          margin: 0;
+          font-size: 24px;
+          font-weight: 800;
+          letter-spacing: 1px;
+        }
+        .dealer-info p {
+          margin: 4px 0 0 0;
+          font-size: 12px;
+          color: #555;
+        }
+
+        .doc-meta {
+          text-align: right;
+        }
+        .doc-meta h2 {
+          font-size: 16px;
+          color: #333;
+          margin: 0 0 10px 0;
+        }
+        .meta-table {
+          width: 100%;
+          font-size: 12px;
+        }
+        .meta-table td {
+          padding: 2px 5px;
+        }
+
+        .doc-section {
+          margin-bottom: 25px;
+        }
+        .doc-section h3 {
+          font-size: 14px;
+          color: white;
+          background-color: var(--text-secondary);
+          padding: 6px 10px;
+          margin-bottom: 12px;
+          text-transform: uppercase;
+          letter-spacing: 0.5px;
+        }
+        
+        .info-grid {
+          display: grid;
+          grid-template-columns: 1fr 1fr;
+          gap: 20px;
+          margin-bottom: 25px;
+        }
+
+        .info-grid .doc-section {
+          margin-bottom: 0px;
+        }
+
+        .customer-info p, .vehicle-info p {
+          margin: 4px 0;
+          font-size: 13px;
+        }
+
+        .pricing-table {
+          width: 100%;
+          border-collapse: collapse;
+          font-size: 13px;
+        }
+        .pricing-table th {
+          background-color: #f3f4f6;
+          padding: 10px;
+          text-align: left;
+          border: 1px solid #ddd;
+        }
+        .pricing-table td {
+          padding: 8px 10px;
+          border: 1px solid #ddd;
+        }
+        .text-right { text-align: right !important; }
+        
+        .subtotal td {
+          background-color: #f9fafb;
+        }
+        .discount td {
+          color: #dc2626;
+        }
+        
+        .final-row td {
+          background-color: var(--brand-blue);
+          color: white;
+          font-size: 16px;
+          font-weight: bold;
+          padding: 12px 10px;
+          border: 1px solid var(--brand-blue);
+        }
+
+        .terms-section ul {
+          margin: 0;
+          padding-left: 20px;
+          font-size: 11px;
+          color: #555;
+        }
+        .terms-section li {
+          margin-bottom: 5px;
+        }
+
+        .signatures {
+          margin-top: 50px;
+          display: flex;
+          justify-content: space-between;
+        }
+        .sig-box {
+          width: 200px;
+          text-align: center;
+        }
+        .sig-box .line {
+          border-bottom: 1px solid #333;
+          margin-bottom: 10px;
+        }
+        .sig-box p {
+          font-size: 12px;
+          font-weight: bold;
+          color: #555;
+        }
+      `}</style>
+    </div>
+  );
+}
