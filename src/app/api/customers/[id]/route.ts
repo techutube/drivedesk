@@ -4,10 +4,10 @@ import Customer from '@/models/Customer';
 import { verifyToken } from '@/lib/auth';
 import { cookies } from 'next/headers';
 
-export async function PUT(req: Request, { params }: { params: { id: string } }) {
+export async function PUT(req: Request, { params }: { params: Promise<{ id: string }> }) {
   try {
     await connectToDatabase();
-    const { id } = params;
+    const { id } = await params;
     const body = await req.json();
 
     // Get current user for history tracking

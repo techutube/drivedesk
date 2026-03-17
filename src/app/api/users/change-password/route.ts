@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import connectToDatabase from '@/lib/mongodb';
 import User from '@/models/User';
+import { cookies } from 'next/headers';
 
 function decodeJwt(token: string) {
   try {
@@ -20,9 +21,10 @@ export async function POST(req: Request) {
     await connectToDatabase();
 
     // Get current user from token
-    const token = req.headers.get('cookie')?.split('auth_token=')[1]?.split(';')[0];
+    const cookieStore = await cookies();
+    const token = cookieStore.get('auth_token')?.value;
     const decoded = token ? decodeJwt(token) : null;
-    if (!decoded?.id) {
+    if (!decoded?.userId) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
