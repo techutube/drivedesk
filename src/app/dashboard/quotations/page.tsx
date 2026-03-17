@@ -58,51 +58,53 @@ export default function QuotationsPage() {
         {loading ? (
           <p>Loading quotations...</p>
         ) : (
-          <table className="admin-table">
-            <thead>
-              <tr>
-                <th>Quote No.</th>
-                <th>Date</th>
-                <th>Customer Name</th>
-                <th>Car Model</th>
-                <th>Status</th>
-                <th>Final Price</th>
-                <th>Action</th>
-              </tr>
-            </thead>
-            <tbody>
-              {quotations.map(quote => (
-                <tr key={quote._id}>
-                  <td><strong>{quote.quotationNumber}</strong></td>
-                  <td>{new Date(quote.createdAt).toLocaleDateString()}</td>
-                  <td>{quote.customer?.name || 'N/A'}</td>
-                  <td>{quote.car ? `${quote.car.name} ${quote.car.variant}` : 'N/A'}</td>
-                  <td>
-                    <span className={`status-badge ${getStatusClass(quote.status)}`}>
-                      {quote.status}
-                    </span>
-                  </td>
-                  <td>₹{quote.pricing?.finalOnRoadPrice?.toLocaleString('en-IN') || 0}</td>
-                  <td>
-                    {quote.status === 'Draft' ? (
-                      <Link href={`/dashboard/quotations/${quote._id}/edit`} className="btn btn-sm btn-outline">
-                        Edit Draft
-                      </Link>
-                    ) : (
-                      <Link href={`/dashboard/quotations/${quote._id}`} className="btn btn-sm btn-outline">
-                        View PDF
-                      </Link>
-                    )}
-                  </td>
-                </tr>
-              ))}
-              {quotations.length === 0 && (
+          <div className="table-responsive">
+            <table className="admin-table">
+              <thead>
                 <tr>
-                  <td colSpan={7} style={{ textAlign: 'center' }}>No quotations found.</td>
+                  <th>Quote No.</th>
+                  <th>Date</th>
+                  <th>Customer</th>
+                  <th>Car</th>
+                  <th>Status</th>
+                  <th>Price</th>
+                  <th>Action</th>
                 </tr>
-              )}
-            </tbody>
-          </table>
+              </thead>
+              <tbody>
+                {quotations.map(quote => (
+                  <tr key={quote._id}>
+                    <td><strong>{quote.quotationNumber}</strong></td>
+                    <td style={{ whiteSpace: 'nowrap' }}>{new Date(quote.createdAt).toLocaleDateString()}</td>
+                    <td>{quote.customer?.name || 'N/A'}</td>
+                    <td style={{ whiteSpace: 'nowrap' }}>{quote.car ? `${quote.car.name} ${quote.car.variant}` : 'N/A'}</td>
+                    <td>
+                      <span className={`status-badge ${getStatusClass(quote.status)}`}>
+                        {quote.status}
+                      </span>
+                    </td>
+                    <td style={{ whiteSpace: 'nowrap' }}>₹{quote.pricing?.finalOnRoadPrice?.toLocaleString('en-IN') || 0}</td>
+                    <td>
+                      {quote.status === 'Draft' ? (
+                        <Link href={`/dashboard/quotations/${quote._id}/edit`} className="btn btn-sm btn-outline">
+                          Edit
+                        </Link>
+                      ) : (
+                        <Link href={`/dashboard/quotations/${quote._id}`} className="btn btn-sm btn-outline">
+                          View
+                        </Link>
+                      )}
+                    </td>
+                  </tr>
+                ))}
+                {quotations.length === 0 && (
+                  <tr>
+                    <td colSpan={7} style={{ textAlign: 'center' }}>No quotations found.</td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
+          </div>
         )}
       </div>
 
@@ -152,6 +154,24 @@ export default function QuotationsPage() {
         .status-rejected { background: #fee2e2; color: #991b1b; }
         .status-pending { background: #fef3c7; color: #92400e; }
         .status-draft { background: #f3f4f6; color: #374151; }
+        .table-responsive {
+          width: 100%;
+          overflow-x: auto;
+          -webkit-overflow-scrolling: touch;
+        }
+        @media (max-width: 768px) {
+          .page-header {
+            flex-wrap: wrap;
+            gap: 0.75rem;
+          }
+          .card {
+            padding: var(--spacing-md);
+          }
+          .admin-table th, .admin-table td {
+            padding: 0.6rem 0.75rem;
+            font-size: 0.8rem;
+          }
+        }
       `}</style>
     </div>
   );

@@ -645,6 +645,7 @@ export default function NewQuotationPage() {
           display: flex;
           gap: 1rem;
           justify-content: flex-end;
+          flex-wrap: wrap;
         }
 
         @media (max-width: 768px) {
@@ -656,6 +657,35 @@ export default function NewQuotationPage() {
           }
           .grid-2 {
             grid-template-columns: 1fr;
+          }
+          .page-header {
+            flex-wrap: wrap;
+            gap: 0.75rem;
+          }
+          .step-content {
+            padding: var(--spacing-md);
+          }
+          .wizard-footer {
+            padding: var(--spacing-md);
+            flex-wrap: wrap;
+            gap: 0.75rem;
+          }
+          .action-buttons {
+            flex-direction: column;
+          }
+          .action-buttons .btn {
+            width: 100%;
+            text-align: center;
+          }
+          .step-content h3 {
+            font-size: 1rem;
+          }
+          .accessories-grid {
+            grid-template-columns: 1fr 1fr;
+          }
+          .summary-table td {
+            font-size: 0.85rem;
+            padding: 0.5rem 0;
           }
         }
       `}</style>

@@ -1,6 +1,8 @@
 'use client';
 
 import { use, useEffect, useState } from 'react';
+import { useRouter } from 'next/navigation';
+import Link from 'next/link';
 import jsPDF from 'jspdf';
 import html2canvas from 'html2canvas';
 
@@ -44,6 +46,7 @@ export default function QuotationViewPage({ params }: { params: Promise<{ id: st
   return (
     <div className="view-page">
       <div className="actions-bar">
+        <Link href="/dashboard/quotations" className="btn btn-outline btn-sm">← Back to List</Link>
         <button className="btn btn-primary" onClick={generatePDF}>📄 Download PDF</button>
       </div>
 
@@ -229,8 +232,11 @@ export default function QuotationViewPage({ params }: { params: Promise<{ id: st
         }
         .actions-bar {
           display: flex;
-          justify-content: flex-end;
+          justify-content: space-between;
+          align-items: center;
           padding-bottom: var(--spacing-sm);
+          flex-wrap: wrap;
+          gap: 0.75rem;
         }
         
         .pdf-container {
@@ -243,12 +249,13 @@ export default function QuotationViewPage({ params }: { params: Promise<{ id: st
 
         .pdf-document {
           background-color: white;
-          width: 210mm; /* A4 width */
-          min-height: 297mm; /* A4 height */
+          width: 210mm;
+          min-height: 297mm;
           padding: 20mm;
           box-shadow: 0 4px 12px rgba(0,0,0,0.15);
           color: #333;
           font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
+          flex-shrink: 0;
         }
 
         .doc-header {
@@ -377,6 +384,35 @@ export default function QuotationViewPage({ params }: { params: Promise<{ id: st
           font-size: 12px;
           font-weight: bold;
           color: #555;
+        }
+
+        @media (max-width: 768px) {
+          .pdf-container {
+            padding: 0.5rem;
+          }
+          .pdf-document {
+            width: 100%;
+            min-height: unset;
+            padding: 5mm;
+            font-size: 11px;
+          }
+          .doc-header {
+            flex-direction: column;
+            gap: 12px;
+          }
+          .doc-meta {
+            text-align: left;
+          }
+          .info-grid {
+            grid-template-columns: 1fr;
+            gap: 12px;
+          }
+          .final-row td {
+            font-size: 13px;
+          }
+          .signatures {
+            margin-top: 24px;
+          }
         }
       `}</style>
     </div>
