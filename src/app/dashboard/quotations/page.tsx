@@ -16,23 +16,34 @@ type Quotation = {
 
 export default function QuotationsPage() {
   const [quotations, setQuotations] = useState<Quotation[]>([]);
+  const [users, setUsers] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [currentUser, setCurrentUser] = useState<any>(null);
   const [historyQuote, setHistoryQuote] = useState<any>(null);
+  
+  // Filters
+  const [searchQuery, setSearchQuery] = useState('');
+  const [statusFilter, setStatusFilter] = useState('');
+  const [filterGSM, setFilterGSM] = useState('');
+  const [filterManager, setFilterManager] = useState('');
+  const [filterAssociate, setFilterAssociate] = useState('');
 
   const fetchData = async () => {
     try {
       setLoading(true);
-      const [qRes, uRes] = await Promise.all([
+      const [qRes, uRes, usersRes] = await Promise.all([
         fetch('/api/quotations'),
-        fetch('/api/auth/me')
+        fetch('/api/auth/me'),
+        fetch('/api/users')
       ]);
       
       const qData = await qRes.json();
       const uData = await uRes.json();
+      const usersData = await usersRes.json();
 
       if (Array.isArray(qData)) setQuotations(qData);
       if (uData.user) setCurrentUser(uData.user);
+      if (Array.isArray(usersData)) setUsers(usersData);
     } catch (err) {
       console.error('Failed to fetch data', err);
     } finally {
@@ -53,12 +64,43 @@ export default function QuotationsPage() {
     }
   };
 
+  const filteredQuotations = quotations.filter((quote: any) => {
+    // 1. Basic Search
+    const matchesSearch = !searchQuery || 
+      quote.quotationNumber.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      (quote.customer?.name || '').toLowerCase().includes(searchQuery.toLowerCase());
+    
+    // 2. Status Filter
+    const matchesStatus = !statusFilter || quote.status === statusFilter;
+    
+    // 3. Hierarchical Filter
+    const salespersonId = quote.salesperson?._id || quote.salesperson;
+    
+    let matchesHierarchy = true;
+    
+    if (filterAssociate) {
+      matchesHierarchy = salespersonId === filterAssociate;
+    } else if (filterManager) {
+      const associatesUnderManager = users.filter(u => (u.reportsTo?._id || u.reportsTo) === filterManager).map(u => u._id);
+      matchesHierarchy = salespersonId === filterManager || associatesUnderManager.includes(salespersonId);
+    } else if (filterGSM) {
+      const managersUnderGSM = users.filter(u => (u.reportsTo?._id || u.reportsTo) === filterGSM).map(u => u._id);
+      const associatesUnderThoseManagers = users.filter(u => managersUnderGSM.includes(u.reportsTo?._id || u.reportsTo)).map(u => u._id);
+      matchesHierarchy = salespersonId === filterGSM || managersUnderGSM.includes(salespersonId) || associatesUnderThoseManagers.includes(salespersonId);
+    }
+
+    return matchesSearch && matchesStatus && matchesHierarchy;
+  });
+
   const canEdit = (quote: Quotation) => {
     if (!currentUser) return false;
-    const isManager = currentUser.role === 'Manager' || currentUser.role === 'Admin';
+    const isPowerUser = ['Owner', 'GM', 'GSM', 'Admin', 'Super Admin'].includes(currentUser.role);
+    const isFinance = currentUser.role === 'F&I Manager';
+    
+    if (isFinance) return true;
     if (quote.status === 'Draft') return true;
     if (quote.status === 'Rejected') return true;
-    if (quote.status === 'Approved' && isManager) return true;
+    if (quote.status === 'Approved' && isPowerUser) return true;
     return false;
   };
 
@@ -73,6 +115,58 @@ export default function QuotationsPage() {
           )}
           <h2>{historyQuote ? `History: ${historyQuote.quotationNumber}` : 'Quotations'}</h2>
         </div>
+        {!historyQuote && (
+          <div className="quotation-controls mt-4">
+            <div className="controls-row">
+              <input 
+                type="text" 
+                placeholder="Search Quote # or Customer..." 
+                value={searchQuery} 
+                onChange={e => setSearchQuery(e.target.value)}
+                className="filter-input"
+              />
+              <select value={statusFilter} onChange={e => setStatusFilter(e.target.value)} className="filter-select">
+                <option value="">All Statuses</option>
+                <option value="Draft">Draft</option>
+                <option value="Pending Approval">Pending Approval</option>
+                <option value="Approved">Approved</option>
+                <option value="Rejected">Rejected</option>
+              </select>
+            </div>
+            
+            <div className="controls-row mt-2">
+              {['Owner', 'GM', 'Admin', 'Super Admin'].includes(currentUser?.role) && (
+                <select value={filterGSM} onChange={e => { setFilterGSM(e.target.value); setFilterManager(''); setFilterAssociate(''); }} className="filter-select">
+                  <option value="">All GSMs</option>
+                  {users.filter(u => u.role === 'GSM').map(u => <option key={u._id} value={u._id}>{u.name}</option>)}
+                </select>
+              )}
+              
+              {['Owner', 'GM', 'GSM', 'Admin', 'Super Admin'].includes(currentUser?.role) && (
+                <select value={filterManager} onChange={e => { setFilterManager(e.target.value); setFilterAssociate(''); }} className="filter-select">
+                  <option value="">All Sales Managers</option>
+                  {users.filter(u => {
+                    if (u.role !== 'Sales Manager') return false;
+                    if (filterGSM) return u.reportsTo?._id === filterGSM || u.reportsTo === filterGSM;
+                    return true;
+                  }).map(u => <option key={u._id} value={u._id}>{u.name}</option>)}
+                </select>
+              )}
+
+              {['Owner', 'GM', 'GSM', 'Sales Manager', 'Admin', 'Super Admin'].includes(currentUser?.role) && (
+                <select value={filterAssociate} onChange={e => setFilterAssociate(e.target.value)} className="filter-select">
+                  <option value="">All Sales Associates</option>
+                  {users.filter(u => {
+                    if (u.role !== 'Sales Associate') return false;
+                    if (filterManager) return u.reportsTo?._id === filterManager || u.reportsTo === filterManager;
+                    return true;
+                  }).map(u => <option key={u._id} value={u._id}>{u.name}</option>)}
+                </select>
+              )}
+            </div>
+          </div>
+        )}
+
         {!historyQuote && (
           <Link href="/dashboard/quotations/new" className="btn btn-primary">
             + Create Quotation
@@ -128,7 +222,7 @@ export default function QuotationsPage() {
                 </tr>
               </thead>
               <tbody>
-                {quotations.map(quote => (
+                {filteredQuotations.map(quote => (
                   <tr key={quote._id}>
                     <td><strong>{quote.quotationNumber}</strong></td>
                     <td style={{ whiteSpace: 'nowrap' }}>{new Date(quote.createdAt).toLocaleDateString()}</td>
@@ -252,6 +346,38 @@ export default function QuotationsPage() {
         .old-val { color: var(--danger); text-decoration: line-through; }
         .arrow { color: var(--text-secondary); }
         .new-val { color: #166534; font-weight: 600; }
+
+        .quotation-controls {
+          display: flex;
+          flex-direction: column;
+          gap: 0.5rem;
+          margin-bottom: 1rem;
+          flex: 1;
+          max-width: 800px;
+        }
+        .controls-row {
+          display: flex;
+          gap: 0.75rem;
+          flex-wrap: wrap;
+        }
+        .filter-input {
+          flex: 1;
+          min-width: 200px;
+          padding: 0.5rem 0.75rem;
+          border: 1px solid var(--border-color);
+          border-radius: var(--radius-sm);
+          font-size: 0.875rem;
+        }
+        .filter-select {
+          padding: 0.5rem 0.75rem;
+          border: 1px solid var(--border-color);
+          border-radius: var(--radius-sm);
+          font-size: 0.875rem;
+          min-width: 150px;
+          background: white;
+        }
+        .mt-2 { margin-top: 0.5rem; }
+        .mt-4 { margin-top: 1rem; }
 
         @media (max-width: 768px) {
           .page-header {

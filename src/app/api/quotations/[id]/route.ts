@@ -81,20 +81,22 @@ export async function PUT(req: Request, { params }: { params: Promise<{ id: stri
     const quotation = await Quotation.findById(id);
     if (!quotation) return NextResponse.json({ error: 'Quotation not found' }, { status: 404 });
 
-    // Permissions Logic:
-    // 1. If Approved: Only Manager or Admin can edit.
-    // 2. If Rejected: Salesperson (creator) can edit and resubmit.
-    // 3. If Pending Approval: Only Manager can Approve/Reject (dealt with via status update).
-    
-    const isManager = decoded.role === 'Manager' || decoded.role === 'Admin';
+    // Permissions Logic (Hierarchical):
+    const isPowerUser = ['Owner', 'GM', 'GSM', 'Admin', 'Super Admin'].includes(decoded.role);
+    const isSalesManager = decoded.role === 'Sales Manager';
+    const isFinance = decoded.role === 'F&I Manager';
     const isCreator = quotation.salesperson.toString() === decoded.userId;
 
-    if (quotation.status === 'Approved' && !isManager) {
-      return NextResponse.json({ error: 'Only managers can edit approved quotations' }, { status: 403 });
+    // 1. Finance can always edit (they handle loans/warranties after the fact)
+    // 2. Power users (Owner/GM/GSM) can edit anything
+    // 3. Sales Manager can edit their own or their team's (but let's keep it simple: power users)
+    
+    if (!isPowerUser && !isFinance && !isCreator && !isSalesManager) {
+      return NextResponse.json({ error: 'Unauthorized to edit this quotation' }, { status: 403 });
     }
 
-    if (quotation.status === 'Rejected' && !isCreator && !isManager) {
-      return NextResponse.json({ error: 'Unauthorized to edit this quotation' }, { status: 403 });
+    if (quotation.status === 'Approved' && !isPowerUser && !isFinance) {
+      return NextResponse.json({ error: 'Only Managers or Finance can edit approved quotations' }, { status: 403 });
     }
 
     // Detect Changes for History
@@ -152,7 +154,8 @@ export async function PUT(req: Request, { params }: { params: Promise<{ id: stri
 
     if (Object.keys(changes).length > 0) {
       // If a salesperson edits a rejected quotation, move it back to Pending or Draft
-      if (quotation.status === 'Rejected' && !isManager) {
+      const isPowerUser = ['Owner', 'GM', 'GSM', 'Admin', 'Super Admin'].includes(decoded.role);
+      if (quotation.status === 'Rejected' && !isPowerUser) {
         changes.status = { from: 'Rejected', to: 'Pending Approval' };
         quotation.status = 'Pending Approval';
       }

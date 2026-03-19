@@ -60,7 +60,7 @@ export default function UserManagementPage() {
         throw new Error(data.error || 'Failed to create user');
       }
       setShowForm(false);
-      setFormData({ name: '', email: '', password: '', role: 'Salesperson', reportsTo: '' });
+      setFormData({ name: '', email: '', password: '', role: 'Sales Associate', reportsTo: '' });
       fetchUsers();
     } catch (err: any) {
       setError(err.message);
@@ -120,9 +120,12 @@ export default function UserManagementPage() {
             <div className="form-group">
               <label>Role</label>
               <select value={formData.role} onChange={e => setFormData({...formData, role: e.target.value})}>
-                <option value="Salesperson">Salesperson</option>
-                <option value="Team Lead">Team Lead</option>
-                <option value="Manager">Manager</option>
+                <option value="Sales Associate">Sales Associate</option>
+                <option value="Sales Manager">Sales Manager</option>
+                <option value="GSM">General Sales Manager (GSM)</option>
+                <option value="GM">General Manager (GM)</option>
+                <option value="Owner">Owner</option>
+                <option value="F&I Manager">Finance & Insurance (F&I) Manager</option>
                 {currentUserRole === 'Super Admin' && (
                   <>
                     <option value="Admin">Admin</option>
@@ -137,8 +140,14 @@ export default function UserManagementPage() {
                 value={formData.reportsTo || ''} 
                 onChange={e => setFormData({...formData, reportsTo: e.target.value})}
               >
-                <option value="">None (Self Managed)</option>
-                {users.filter(u => u.role === 'Manager' || u.role === 'Team Lead').map(u => (
+                <option value="">None (Self Managed / Top Level)</option>
+                {users.filter(u => {
+                  if (formData.role === 'Sales Associate') return ['Sales Manager', 'GSM', 'GM', 'Owner', 'Admin', 'Super Admin'].includes(u.role);
+                  if (formData.role === 'Sales Manager') return ['GSM', 'GM', 'Owner', 'Admin', 'Super Admin'].includes(u.role);
+                  if (formData.role === 'GSM') return ['GM', 'Owner', 'Admin', 'Super Admin'].includes(u.role);
+                  if (formData.role === 'GM') return ['Owner', 'Admin', 'Super Admin'].includes(u.role);
+                  return false;
+                }).map(u => (
                   <option key={u._id} value={u._id}>{u.name} ({u.role})</option>
                 ))}
               </select>
@@ -276,11 +285,14 @@ export default function UserManagementPage() {
           font-size: 0.75rem;
           font-weight: 600;
         }
-        .role-admin { background: #fee2e2; color: #991b1b; }
-        .role-super-admin { background: #1e1b4b; color: #c7d2fe; }
-        .role-manager { background: #fef3c7; color: #92400e; }
-        .role-team-lead { background: #fae8ff; color: #86198f; }
-        .role-salesperson { background: #e0e7ff; color: #3730a3; }
+        .role-owner { background: #4c1d95; color: white; }
+        .role-gm { background: #1e3a8a; color: white; }
+        .role-gsm { background: #1e40af; color: white; }
+        .role-sales-manager { background: #3b82f6; color: white; }
+        .role-f-i-manager { background: #6366f1; color: white; }
+        .role-sales-associate { background: #94a3b8; color: white; }
+        .role-admin { background: #dc2626; color: white; }
+        .role-super-admin { background: #991b1b; color: white; }
         
         .status-badge {
           padding: 0.25rem 0.5rem;

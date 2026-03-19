@@ -31,19 +31,27 @@ export default function ApprovalsPage() {
   const [comments, setComments] = useState('');
   const [actionLoading, setActionLoading] = useState(false);
   const [statusFilter, setStatusFilter] = useState<'Pending Approval' | 'Approved' | 'Rejected'>('Pending Approval');
+  const [currentUser, setCurrentUser] = useState<any>(null);
 
   const fetchPendingQuotations = async () => {
     try {
       setLoading(true);
-      const res = await fetch('/api/quotations');
-      const data = await res.json();
-      if (Array.isArray(data)) {
+      const [qRes, uRes] = await Promise.all([
+        fetch('/api/quotations'),
+        fetch('/api/auth/me')
+      ]);
+      
+      const qData = await qRes.json();
+      const uData = await uRes.json();
+      
+      if (uData.user) setCurrentUser(uData.user);
+      if (Array.isArray(qData)) {
         // Filter out Drafts
-        const filtered = data.filter(q => q.status !== 'Draft');
+        const filtered = qData.filter(q => q.status !== 'Draft');
         setQuotations(filtered);
       }
     } catch (err) {
-      console.error('Failed to fetch quotations', err);
+      console.error('Failed to fetch data', err);
     } finally {
       setLoading(false);
     }

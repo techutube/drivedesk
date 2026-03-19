@@ -68,26 +68,36 @@ export async function GET(req: Request) {
     if (token) {
       const decoded: any = verifyToken(token);
       if (decoded) {
-        if (decoded.role === 'Salesperson') {
+        if (decoded.role === 'Owner' || decoded.role === 'Admin' || decoded.role === 'Super Admin' || decoded.role === 'F&I Manager') {
+          // These roles see everything
+          userFilter = {};
+        } else if (decoded.role === 'GM') {
+          // GM sees all results from GSMs, TLs and Sales Associates in their subtree
+          const gsms = await User.find({ reportsTo: decoded.userId }).select('_id');
+          const gsmIds = gsms.map(u => u._id);
+          const tls = await User.find({ reportsTo: { $in: gsmIds } }).select('_id');
+          const tlIds = tls.map(u => u._id);
+          const associates = await User.find({ reportsTo: { $in: tlIds } }).select('_id');
+          const associateIds = associates.map(u => u._id);
+          
+          userFilter = { salesperson: { $in: [decoded.userId, ...gsmIds, ...tlIds, ...associateIds] } };
+        } else if (decoded.role === 'GSM') {
+          // GSM sees TLs and Associates in their subtree
+          const tls = await User.find({ reportsTo: decoded.userId }).select('_id');
+          const tlIds = tls.map(u => u._id);
+          const associates = await User.find({ reportsTo: { $in: tlIds } }).select('_id');
+          const associateIds = associates.map(u => u._id);
+          
+          userFilter = { salesperson: { $in: [decoded.userId, ...tlIds, ...associateIds] } };
+        } else if (decoded.role === 'Sales Manager') {
+          // Sales Manager sees their associates
+          const associates = await User.find({ reportsTo: decoded.userId }).select('_id');
+          const associateIds = associates.map(u => u._id);
+          userFilter = { salesperson: { $in: [decoded.userId, ...associateIds] } };
+        } else {
+          // Sales Associate sees only their own
           userFilter = { salesperson: decoded.userId };
-        } else if (decoded.role === 'Team Lead') {
-          // Team Lead sees their own + their team's (salespeople reporting to them)
-          const teamMembers = await User.find({ reportsTo: decoded.userId }).select('_id');
-          const memberIds = teamMembers.map(m => m._id);
-          userFilter = { salesperson: { $in: [decoded.userId, ...memberIds] } };
-        } else if (decoded.role === 'Manager') {
-          // Manager sees their own + everyone reporting to them DIRECTLY or INDIRECTLY
-          // First, get everyone reporting to Manager directly
-          const directReports = await User.find({ reportsTo: decoded.userId });
-          const directIds = directReports.map(m => m._id);
-          
-          // Then, get everyone reporting to those reports (e.g. Salespeople reporting to Team Leads)
-          const indirectReports = await User.find({ reportsTo: { $in: directIds } });
-          const indirectIds = indirectReports.map(m => m._id);
-          
-          userFilter = { salesperson: { $in: [decoded.userId, ...directIds, ...indirectIds] } };
         }
-        // Super Admin and Admin see everything (userFilter remains {})
       }
     }
 

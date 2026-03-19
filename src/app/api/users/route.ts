@@ -25,28 +25,45 @@ export async function GET(req: Request) {
     
     let filter = {};
     if (decoded) {
-      if (decoded.role === 'Manager') {
-        // Manager sees their team
-        const directReports = await User.find({ reportsTo: decoded.userId }).select('_id');
-        const directIds = directReports.map(m => m._id);
-        const indirectReports = await User.find({ reportsTo: { $in: directIds } }).select('_id');
-        const indirectIds = indirectReports.map(m => m._id);
+      if (decoded.role === 'Owner' || decoded.role === 'Admin' || decoded.role === 'Super Admin') {
+        filter = {};
+      } else if (decoded.role === 'GM') {
+        // GM sees GSMs reporting to them, their TLs, and Sales Associates
+        const gsms = await User.find({ reportsTo: decoded.userId }).select('_id');
+        const gsmIds = gsms.map(u => u._id);
+        const tls = await User.find({ reportsTo: { $in: gsmIds } }).select('_id');
+        const tlIds = tls.map(u => u._id);
         filter = { 
           $or: [
             { _id: decoded.userId },
-            { reportsTo: decoded.userId },
-            { reportsTo: { $in: directIds } }
+            { reportsTo: decoded.userId }, // Direct GSMs
+            { reportsTo: { $in: gsmIds } }, // TLs under those GSMs
+            { reportsTo: { $in: tlIds } }   // Sales Associates under those TLs
           ]
         };
-      } else if (decoded.role === 'Team Lead') {
+      } else if (decoded.role === 'GSM') {
+        // GSM sees TLs reporting to them, and Sales Associates under them
+        const tls = await User.find({ reportsTo: decoded.userId }).select('_id');
+        const tlIds = tls.map(u => u._id);
+        filter = { 
+          $or: [
+            { _id: decoded.userId },
+            { reportsTo: decoded.userId }, // Direct TLs
+            { reportsTo: { $in: tlIds } }    // Sales Associates under those TLs
+          ]
+        };
+      } else if (decoded.role === 'Sales Manager') {
+        // Sales Manager sees their reports (Sales Associates)
         filter = { 
           $or: [
             { _id: decoded.userId },
             { reportsTo: decoded.userId }
           ]
         };
+      } else {
+        // Sales Associate, F&I Manager, etc. see only themselves
+        filter = { _id: decoded.userId };
       }
-      // Admins see all
     }
 
     const users = await User.find(filter, { passwordHash: 0 })
