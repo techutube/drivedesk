@@ -19,7 +19,7 @@ export default function UserManagementPage() {
   
   // Form state
   const [showForm, setShowForm] = useState(false);
-  const [formData, setFormData] = useState({ name: '', email: '', password: '', role: 'Salesperson', reportsTo: '' });
+  const [formData, setFormData] = useState({ name: '', email: '', password: '', role: 'Sales Associate', reportsTo: '' });
   const [error, setError] = useState('');
 
   const fetchUsers = async () => {

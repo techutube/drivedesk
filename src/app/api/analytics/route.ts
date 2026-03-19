@@ -29,12 +29,12 @@ export async function GET(req: Request) {
       ]);
       stats.totalSalesRevenue = revenueAggr.length > 0 ? revenueAggr[0].totalSales : 0;
       
-    } else if (decoded.role === 'Manager') {
+    } else if (decoded.role === 'Sales Manager') {
       stats.totalPending = await Quotation.countDocuments({ status: 'Pending Approval' });
       stats.totalApproved = await Quotation.countDocuments({ status: 'Approved' });
       stats.totalRejected = await Quotation.countDocuments({ status: 'Rejected' });
       
-    } else if (decoded.role === 'Salesperson') {
+    } else if (decoded.role === 'Sales Associate') {
       stats.myTotalQuotations = await Quotation.countDocuments({ salesperson: decoded.userId });
       stats.myPending = await Quotation.countDocuments({ salesperson: decoded.userId, status: 'Pending Approval' });
       stats.myApproved = await Quotation.countDocuments({ salesperson: decoded.userId, status: 'Approved' });

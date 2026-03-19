@@ -106,7 +106,7 @@ export async function POST(req: Request) {
       name,
       email,
       passwordHash: password, 
-      role: role || 'Salesperson',
+      role: role || 'Sales Associate',
       reportsTo: reportsTo || undefined
     });
 

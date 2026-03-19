@@ -151,7 +151,7 @@ export default function ApprovalsPage() {
                       <p className="text-danger">₹{quote.pricing?.discountTotal?.toLocaleString('en-IN') || 0}</p>
                     </div>
                     <div>
-                      <small>Salesperson</small>
+                      <small>Sales Associate</small>
                       <p>{quote.salesperson?.name || 'Self'}</p>
                     </div>
                   </div>

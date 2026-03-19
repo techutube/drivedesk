@@ -82,7 +82,7 @@ export default function DashboardPage() {
             </>
           )}
 
-          {/* Salesperson Stats */}
+          {/* Sales Associate Stats */}
           {stats.myTotalQuotations !== undefined && (
             <>
               <div className="stat-card blue">
