@@ -4,7 +4,7 @@ export interface IUser extends Document {
   name: string;
   email: string;
   passwordHash: string;
-  role: 'Owner' | 'GM' | 'GSM' | 'Sales Manager' | 'F&I Manager' | 'Sales Associate' | 'Admin' | 'Super Admin';
+  role: 'Owner' | 'GM' | 'GSM' | 'Sales Manager' | 'Team Lead' | 'F&I Manager' | 'Sales Associate' | 'Admin' | 'Super Admin';
   reportsTo?: mongoose.Types.ObjectId;
   isActive: boolean;
   createdAt: Date;
@@ -16,7 +16,7 @@ const UserSchema: Schema = new Schema({
   passwordHash: { type: String, required: true },
   role: { 
     type: String, 
-    enum: ['Owner', 'GM', 'GSM', 'Sales Manager', 'F&I Manager', 'Sales Associate', 'Admin', 'Super Admin'], 
+    enum: ['Owner', 'GM', 'GSM', 'Sales Manager', 'Team Lead', 'F&I Manager', 'Sales Associate', 'Admin', 'Super Admin'], 
     default: 'Sales Associate' 
   },
   reportsTo: { type: Schema.Types.ObjectId, ref: 'User' },

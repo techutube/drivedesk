@@ -42,7 +42,20 @@ export default function UserManagementPage() {
     fetch('/api/auth/me')
       .then(res => res.json())
       .then(data => {
-        if (data.user) setCurrentUserRole(data.user.role);
+        if (data.user) {
+          const role = data.user.role;
+          setCurrentUserRole(role);
+          
+          // Set sensible default role for creation
+          let defaultRole = 'Sales Associate';
+          if (role === 'GM') defaultRole = 'GSM';
+          else if (role === 'GSM') defaultRole = 'Sales Manager';
+          else if (role === 'Sales Manager') defaultRole = 'Team Lead';
+          else if (role === 'Team Lead') defaultRole = 'Sales Associate';
+          else if (role === 'Owner') defaultRole = 'GM';
+          
+          setFormData(prev => ({ ...prev, role: defaultRole }));
+        }
       });
   }, []);
 
@@ -120,38 +133,67 @@ export default function UserManagementPage() {
             <div className="form-group">
               <label>Role</label>
               <select value={formData.role} onChange={e => setFormData({...formData, role: e.target.value})}>
-                <option value="Sales Associate">Sales Associate</option>
-                <option value="Sales Manager">Sales Manager</option>
-                <option value="GSM">General Sales Manager (GSM)</option>
-                <option value="GM">General Manager (GM)</option>
-                <option value="Owner">Owner</option>
-                <option value="F&I Manager">Finance & Insurance (F&I) Manager</option>
                 {currentUserRole === 'Super Admin' && (
                   <>
-                    <option value="Admin">Admin</option>
                     <option value="Super Admin">Super Admin</option>
+                    <option value="Admin">Admin</option>
+                    <option value="Owner">Owner</option>
+                    <option value="GM">General Manager (GM)</option>
+                    <option value="GSM">General Sales Manager (GSM)</option>
+                    <option value="Sales Manager">Sales Manager</option>
+                    <option value="Team Lead">Team Lead</option>
+                    <option value="Sales Associate">Sales Associate</option>
+                    <option value="F&I Manager">Finance & Insurance (F&I) Manager</option>
                   </>
                 )}
+                {currentUserRole === 'Admin' && (
+                  <>
+                    <option value="Owner">Owner</option>
+                    <option value="GM">General Manager (GM)</option>
+                    <option value="GSM">General Sales Manager (GSM)</option>
+                    <option value="Sales Manager">Sales Manager</option>
+                    <option value="Team Lead">Team Lead</option>
+                    <option value="Sales Associate">Sales Associate</option>
+                    <option value="F&I Manager">Finance & Insurance (F&I) Manager</option>
+                  </>
+                )}
+                {currentUserRole === 'Owner' && (
+                  <>
+                    <option value="GM">General Manager (GM)</option>
+                    <option value="GSM">General Sales Manager (GSM)</option>
+                    <option value="Sales Manager">Sales Manager</option>
+                    <option value="Team Lead">Team Lead</option>
+                    <option value="Sales Associate">Sales Associate</option>
+                    <option value="F&I Manager">Finance & Insurance (F&I) Manager</option>
+                  </>
+                )}
+                {currentUserRole === 'GM' && <option value="GSM">General Sales Manager (GSM)</option>}
+                {currentUserRole === 'GSM' && <option value="Sales Manager">Sales Manager</option>}
+                {currentUserRole === 'Sales Manager' && <option value="Team Lead">Team Lead</option>}
+                {currentUserRole === 'Team Lead' && <option value="Sales Associate">Sales Associate</option>}
               </select>
             </div>
-            <div className="form-group">
-              <label>Reports To (Manager/Lead)</label>
-              <select 
-                value={formData.reportsTo || ''} 
-                onChange={e => setFormData({...formData, reportsTo: e.target.value})}
-              >
-                <option value="">None (Self Managed / Top Level)</option>
-                {users.filter(u => {
-                  if (formData.role === 'Sales Associate') return ['Sales Manager', 'GSM', 'GM', 'Owner', 'Admin', 'Super Admin'].includes(u.role);
-                  if (formData.role === 'Sales Manager') return ['GSM', 'GM', 'Owner', 'Admin', 'Super Admin'].includes(u.role);
-                  if (formData.role === 'GSM') return ['GM', 'Owner', 'Admin', 'Super Admin'].includes(u.role);
-                  if (formData.role === 'GM') return ['Owner', 'Admin', 'Super Admin'].includes(u.role);
-                  return false;
-                }).map(u => (
-                  <option key={u._id} value={u._id}>{u.name} ({u.role})</option>
-                ))}
-              </select>
-            </div>
+            {!['GM', 'GSM', 'Sales Manager', 'Team Lead'].includes(currentUserRole) && (
+              <div className="form-group">
+                <label>Reports To (Manager/Lead)</label>
+                <select 
+                  value={formData.reportsTo || ''} 
+                  onChange={e => setFormData({...formData, reportsTo: e.target.value})}
+                >
+                  <option value="">None (Self Managed / Top Level)</option>
+                  {users.filter(u => {
+                    if (formData.role === 'Sales Associate') return ['Team Lead', 'Sales Manager', 'GSM', 'GM', 'Owner', 'Admin', 'Super Admin'].includes(u.role);
+                    if (formData.role === 'Team Lead') return ['Sales Manager', 'GSM', 'GM', 'Owner', 'Admin', 'Super Admin'].includes(u.role);
+                    if (formData.role === 'Sales Manager') return ['GSM', 'GM', 'Owner', 'Admin', 'Super Admin'].includes(u.role);
+                    if (formData.role === 'GSM') return ['GM', 'Owner', 'Admin', 'Super Admin'].includes(u.role);
+                    if (formData.role === 'GM') return ['Owner', 'Admin', 'Super Admin'].includes(u.role);
+                    return false;
+                  }).map(u => (
+                    <option key={u._id} value={u._id}>{u.name} ({u.role})</option>
+                  ))}
+                </select>
+              </div>
+            )}
             <div className="form-actions">
               <button type="submit" className="btn btn-primary">Create User</button>
             </div>

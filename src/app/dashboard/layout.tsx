@@ -100,18 +100,22 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
             </>
           )}
 
-          {(user?.role === 'Super Admin' || user?.role === 'Admin') && (
+          {['Super Admin', 'Admin', 'Owner', 'GM', 'GSM', 'Sales Manager', 'Team Lead'].includes(user?.role) && (
             <>
-              <div className="nav-section">Admin Settings</div>
+              <div className="nav-section">Organization</div>
               <Link href="/dashboard/admin/users" className={`nav-link ${pathname?.includes('/admin/users') ? 'active' : ''}`}>
                 👤 User Management
               </Link>
-              <Link href="/dashboard/admin/inventory" className={`nav-link ${pathname?.includes('/admin/inventory') ? 'active' : ''}`}>
-                🚗 Cars &amp; Inventory
-              </Link>
-              <Link href="/dashboard/admin/accessories" className={`nav-link ${pathname?.includes('/admin/accessories') ? 'active' : ''}`}>
-                🔧 Accessories Master
-              </Link>
+              {(user?.role === 'Super Admin' || user?.role === 'Admin') && (
+                <>
+                  <Link href="/dashboard/admin/inventory" className={`nav-link ${pathname?.includes('/admin/inventory') ? 'active' : ''}`}>
+                    🚗 Cars &amp; Inventory
+                  </Link>
+                  <Link href="/dashboard/admin/accessories" className={`nav-link ${pathname?.includes('/admin/accessories') ? 'active' : ''}`}>
+                    🔧 Accessories Master
+                  </Link>
+                </>
+              )}
             </>
           )}
         </nav>

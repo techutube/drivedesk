@@ -90,10 +90,33 @@ export async function POST(req: Request) {
     const token = req.headers.get('cookie')?.split('auth_token=')[1]?.split(';')[0];
     const decoded = token ? decodeJwt(token) : null;
     
-    if (role === 'Super Admin' || role === 'Admin') {
-      if (!decoded || decoded.role !== 'Super Admin') {
-        return NextResponse.json({ error: 'Only Super Admins can create new Admins or Super Admins.' }, { status: 403 });
-      }
+    if (!decoded) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
+    const { role: currentUserRole } = decoded;
+    let isAllowed = false;
+
+    if (currentUserRole === 'Super Admin') {
+      isAllowed = true;
+    } else if (currentUserRole === 'Admin') {
+      isAllowed = role !== 'Super Admin';
+    } else if (currentUserRole === 'Owner') {
+      isAllowed = !['Super Admin', 'Admin'].includes(role);
+    } else if (currentUserRole === 'GM') {
+      isAllowed = role === 'GSM';
+    } else if (currentUserRole === 'GSM') {
+      isAllowed = role === 'Sales Manager';
+    } else if (currentUserRole === 'Sales Manager') {
+      isAllowed = role === 'Team Lead';
+    } else if (currentUserRole === 'Team Lead') {
+      isAllowed = role === 'Sales Associate';
+    }
+
+    if (!isAllowed) {
+      return NextResponse.json({ 
+        error: `As a ${currentUserRole}, you are not authorized to create a ${role}.` 
+      }, { status: 403 });
     }
 
     const existingUser = await User.findOne({ email });
@@ -107,7 +130,7 @@ export async function POST(req: Request) {
       email,
       passwordHash: password, 
       role: role || 'Sales Associate',
-      reportsTo: reportsTo || undefined
+      reportsTo: reportsTo || (['GM', 'GSM', 'Sales Manager', 'Team Lead'].includes(currentUserRole) ? decoded.userId : undefined)
     });
 
     const { passwordHash: _, ...userResponse } = user.toObject();
