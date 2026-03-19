@@ -128,67 +128,74 @@ export default function QuotationViewPage({ params }: { params: Promise<{ id: st
               </thead>
               <tbody>
                 <tr>
-                  <td>Base Price (Before Tax)</td>
-                  <td className="text-right">{quotation.pricing?.subTotal?.toLocaleString()}</td>
+                  <td>Base Price (Excl. Tax & Accessories)</td>
+                  <td className="text-right">₹{quotation.pricing?.exShowroom?.toLocaleString()}</td>
+                </tr>
+                {quotation.pricing?.accessoriesTotal > 0 && (
+                <tr>
+                  <td>Accessories Total</td>
+                  <td className="text-right">₹{quotation.pricing?.accessoriesTotal?.toLocaleString()}</td>
+                </tr>
+                )}
+                <tr>
+                  <td>Taxable Amount (Car + Accessories)</td>
+                  <td className="text-right">₹{( (quotation.pricing?.exShowroom || 0) + (quotation.pricing?.accessoriesTotal || 0) ).toLocaleString()}</td>
                 </tr>
                 <tr>
-                  <td>GST & Cess Adjustments</td>
-                  <td className="text-right">{quotation.pricing?.gstTotal?.toLocaleString()}</td>
+                  <td>CGST (14%)</td>
+                  <td className="text-right">₹{( (quotation.pricing?.gstTotal || 0) / 2 ).toLocaleString()}</td>
+                </tr>
+                <tr>
+                  <td>SGST (14%)</td>
+                  <td className="text-right">₹{( (quotation.pricing?.gstTotal || 0) / 2 ).toLocaleString()}</td>
                 </tr>
                 <tr className="subtotal">
-                  <td><strong>Ex-Showroom Price</strong></td>
-                  <td className="text-right"><strong>{quotation.pricing?.exShowroom?.toLocaleString()}</strong></td>
+                  <td><strong>Ex-Showroom Price (Incl. GST)</strong></td>
+                  <td className="text-right"><strong>{( (quotation.pricing?.exShowroom || 0) + (quotation.pricing?.accessoriesTotal || 0) + (quotation.pricing?.gstTotal || 0) ).toLocaleString()}</strong></td>
                 </tr>
                 
                 {quotation.charges?.registration > 0 && (
                 <tr>
-                  <td>Registration / RTO</td>
-                  <td className="text-right">{quotation.charges.registration.toLocaleString()}</td>
+                  <td>Registration & RTO Charges</td>
+                  <td className="text-right">₹{quotation.charges.registration.toLocaleString()}</td>
                 </tr>
                 )}
                 {quotation.charges?.insurance > 0 && (
                 <tr>
-                  <td>Comprehensive Insurance</td>
-                  <td className="text-right">{quotation.charges.insurance.toLocaleString()}</td>
+                  <td>Comprehensive Insurance (1yr OD + 3yr TP)</td>
+                  <td className="text-right">₹{quotation.charges.insurance.toLocaleString()}</td>
                 </tr>
                 )}
                 {quotation.charges?.handling > 0 && (
                 <tr>
-                  <td>Handling Charges</td>
-                  <td className="text-right">{quotation.charges.handling.toLocaleString()}</td>
+                  <td>Logistics & Handling</td>
+                  <td className="text-right">₹{quotation.charges.handling.toLocaleString()}</td>
                 </tr>
                 )}
                 {quotation.charges?.fastag > 0 && (
                 <tr>
-                  <td>FASTag</td>
-                  <td className="text-right">{quotation.charges.fastag.toLocaleString()}</td>
+                  <td>Static FASTag</td>
+                  <td className="text-right">₹{quotation.charges.fastag.toLocaleString()}</td>
                 </tr>
                 )}
                 {quotation.charges?.extendedWarranty > 0 && (
                 <tr>
-                  <td>Extended Warranty</td>
-                  <td className="text-right">{quotation.charges.extendedWarranty.toLocaleString()}</td>
+                  <td>Extended Warranty (2+3 years)</td>
+                  <td className="text-right">₹{quotation.charges.extendedWarranty.toLocaleString()}</td>
                 </tr>
                 )}
                 
-                {quotation.pricing?.accessoriesTotal > 0 && (
-                <tr>
-                  <td>Accessories Total</td>
-                  <td className="text-right">{quotation.pricing?.accessoriesTotal?.toLocaleString()}</td>
-                </tr>
-                )}
-
                 {quotation.pricing?.discountTotal > 0 && (
                 <tr className="discount">
-                  <td>Less: Total Dealership Discounts</td>
-                  <td className="text-right">- {quotation.pricing.discountTotal.toLocaleString()}</td>
+                  <td>Less: Applied Discounts & Benefits</td>
+                  <td className="text-right">- ₹{quotation.pricing.discountTotal.toLocaleString()}</td>
                 </tr>
                 )}
                 
                 {quotation.pricing?.exchangeValue > 0 && (
                 <tr className="discount">
-                  <td>Less: Exchange Vehicle Value</td>
-                  <td className="text-right">- {quotation.pricing.exchangeValue.toLocaleString()}</td>
+                  <td>Less: Exchange Value for Old Vehicle</td>
+                  <td className="text-right">- ₹{quotation.pricing.exchangeValue.toLocaleString()}</td>
                 </tr>
                 )}
               </tbody>
@@ -210,6 +217,13 @@ export default function QuotationViewPage({ params }: { params: Promise<{ id: st
               <li>Booking amount is non-refundable in case of cancellation due to changes in regulatory policies.</li>
             </ul>
           </div>
+
+          {quotation.managerComments && (
+            <div className="doc-section comments-section">
+              <h3>Manager Comments</h3>
+              <p className="comments-text">{quotation.managerComments}</p>
+            </div>
+          )}
 
           <div className="signatures">
             <div className="sig-box">
@@ -386,6 +400,23 @@ export default function QuotationViewPage({ params }: { params: Promise<{ id: st
           color: #555;
         }
 
+        .comments-section {
+          background-color: #fffbeb !important;
+          border: 1px solid #fde68a;
+          padding: 1rem !important;
+          border-radius: 4px;
+        }
+        .comments-section h3 {
+          background-color: #f59e0b !important;
+          margin: -1rem -1rem 1rem -1rem !important;
+        }
+        .comments-text {
+          font-size: 13px;
+          color: #92400e;
+          font-style: italic;
+          line-height: 1.5;
+        }
+
         @media (max-width: 768px) {
           .pdf-container {
             padding: 0.5rem;
@@ -412,6 +443,11 @@ export default function QuotationViewPage({ params }: { params: Promise<{ id: st
           }
           .signatures {
             margin-top: 24px;
+          }
+        }
+        @media print {
+          .actions-bar, .sidebar {
+            display: none !important;
           }
         }
       `}</style>

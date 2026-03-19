@@ -30,6 +30,7 @@ export default function ApprovalsPage() {
   const [selectedQuote, setSelectedQuote] = useState<Quotation | null>(null);
   const [comments, setComments] = useState('');
   const [actionLoading, setActionLoading] = useState(false);
+  const [statusFilter, setStatusFilter] = useState<'Pending Approval' | 'Approved' | 'Rejected'>('Pending Approval');
 
   const fetchPendingQuotations = async () => {
     try {
@@ -37,14 +38,8 @@ export default function ApprovalsPage() {
       const res = await fetch('/api/quotations');
       const data = await res.json();
       if (Array.isArray(data)) {
-        // Filter for pending approvals and already approved/rejected for review
+        // Filter out Drafts
         const filtered = data.filter(q => q.status !== 'Draft');
-        // Sort pending first
-        filtered.sort((a, b) => {
-          if (a.status === 'Pending Approval' && b.status !== 'Pending Approval') return -1;
-          if (a.status !== 'Pending Approval' && b.status === 'Pending Approval') return 1;
-          return 0;
-        });
         setQuotations(filtered);
       }
     } catch (err) {
@@ -88,14 +83,33 @@ export default function ApprovalsPage() {
     }
   };
 
+  const filteredQuotations = quotations.filter(q => q.status === statusFilter);
   const pendingCount = quotations.filter(q => q.status === 'Pending Approval').length;
 
   return (
     <div className="approvals-page layout-sidebar-right">
       <div className="main-content">
         <div className="page-header">
-          <h2>Manager Approvals</h2>
-          <span className="badge warning-badge">{pendingCount} Pending Requests</span>
+          <div>
+            <h2>Manager Approvals</h2>
+            <span className="badge warning-badge">{pendingCount} Pending Requests</span>
+          </div>
+          
+          <div className="filter-controls">
+            <label>Show Quotations:</label>
+            <select 
+              value={statusFilter} 
+              onChange={(e) => {
+                setStatusFilter(e.target.value as any);
+                setSelectedQuote(null);
+              }}
+              className="filter-select"
+            >
+              <option value="Pending Approval">Pending Approvals</option>
+              <option value="Approved">Approved</option>
+              <option value="Rejected">Rejected</option>
+            </select>
+          </div>
         </div>
 
         <div className="card list-card">
@@ -103,7 +117,7 @@ export default function ApprovalsPage() {
             <p className="p-4">Loading requests...</p>
           ) : (
             <div className="quotes-list">
-              {quotations.map(quote => (
+              {filteredQuotations.map(quote => (
                 <div 
                   key={quote._id} 
                   className={`quote-item ${selectedQuote?._id === quote._id ? 'selected' : ''} ${quote.status === 'Pending Approval' ? 'is-pending' : ''}`}
@@ -135,8 +149,8 @@ export default function ApprovalsPage() {
                   </div>
                 </div>
               ))}
-              {quotations.length === 0 && (
-                <div className="empty-state">No quotations submitted for review.</div>
+              {filteredQuotations.length === 0 && (
+                <div className="empty-state">No {statusFilter.toLowerCase()} found.</div>
               )}
             </div>
           )}
@@ -224,6 +238,31 @@ export default function ApprovalsPage() {
         .page-header h2 {
           color: var(--text-primary);
           font-weight: 700;
+        }
+        .filter-controls {
+          display: flex;
+          align-items: center;
+          gap: 0.75rem;
+          background: #f8fafc;
+          padding: 0.5rem 1rem;
+          border-radius: var(--radius-md);
+          border: 1px solid var(--border-color);
+        }
+        .filter-controls label {
+          font-size: 0.875rem;
+          font-weight: 600;
+          color: var(--text-secondary);
+        }
+        .filter-select {
+          padding: 0.4rem 0.75rem;
+          border: 1px solid var(--border-color);
+          border-radius: var(--radius-sm);
+          font-size: 0.875rem;
+          font-weight: 500;
+          outline: none;
+        }
+        .filter-select:focus {
+          border-color: var(--brand-blue);
         }
         .badge {
           padding: 0.25rem 0.75rem;

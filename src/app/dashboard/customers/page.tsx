@@ -28,6 +28,7 @@ export default function CustomerManagementPage() {
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
   const [historyCust, setHistoryCust] = useState<Customer | null>(null);
+  const [searchQuery, setSearchQuery] = useState('');
 
   const fetchCustomers = async () => {
     try {
@@ -43,6 +44,12 @@ export default function CustomerManagementPage() {
       setLoading(false);
     }
   };
+
+  const filteredCustomers = customers.filter(c => 
+    c.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    c.phone.includes(searchQuery) ||
+    (c.email && c.email.toLowerCase().includes(searchQuery.toLowerCase()))
+  );
 
   useEffect(() => {
     fetchCustomers();
@@ -113,9 +120,20 @@ export default function CustomerManagementPage() {
           <h2>{historyCust ? `Change History: ${historyCust.name}` : editingId ? 'Edit Customer' : showForm ? 'Add New Customer' : 'Customer Management'}</h2>
         </div>
         {!showForm && !editingId && !historyCust && (
-          <button className="btn btn-primary" onClick={() => setShowForm(true)}>
-            + Add New Customer
-          </button>
+          <div style={{ display: 'flex', gap: '1rem' }}>
+            <div className="search-box">
+              <input 
+                type="text" 
+                placeholder="Search customers..." 
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="search-input"
+              />
+            </div>
+            <button className="btn btn-primary" onClick={() => setShowForm(true)}>
+              + Add New Customer
+            </button>
+          </div>
         )}
       </div>
 
@@ -208,7 +226,7 @@ export default function CustomerManagementPage() {
               </tr>
             </thead>
             <tbody>
-              {customers.map(cust => (
+              {filteredCustomers.map(cust => (
                 <tr key={cust._id}>
                   <td><strong>{cust.name}</strong></td>
                   <td>{cust.phone}</td>
@@ -324,6 +342,19 @@ export default function CustomerManagementPage() {
         .table-responsive {
           width: 100%;
           overflow-x: auto;
+        }
+        .search-input {
+          padding: 0.6rem 1rem;
+          border: 1px solid var(--border-color);
+          border-radius: var(--radius-md);
+          font-size: 0.875rem;
+          width: 250px;
+          outline: none;
+          transition: border-color 0.2s;
+        }
+        .search-input:focus {
+          border-color: var(--brand-blue);
+          box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
         }
         @media (max-width: 768px) {
           .admin-form {

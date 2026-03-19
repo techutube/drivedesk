@@ -34,7 +34,8 @@ export async function GET() {
       id: decoded.userId,
       role: decoded.role,
       name: decoded.name,
-      email: decoded.email
+      email: decoded.email,
+      reportsTo: decoded.reportsTo
     } 
   });
 }

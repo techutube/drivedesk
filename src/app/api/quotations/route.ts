@@ -62,14 +62,32 @@ export async function GET(req: Request) {
     // This prevents "MissingSchemaError: Schema hasn't been registered for model" errors in Next.js HMR
     const _models = [Quotation, Accessory, Car, Customer, User]; 
 
-    // Quick role check for filtering
     const cookieStore = await cookies();
     const token = cookieStore.get('auth_token')?.value;
     let userFilter = {};
     if (token) {
       const decoded: any = verifyToken(token);
-      if (decoded && decoded.role === 'Salesperson') {
-        userFilter = { salesperson: decoded.userId };
+      if (decoded) {
+        if (decoded.role === 'Salesperson') {
+          userFilter = { salesperson: decoded.userId };
+        } else if (decoded.role === 'Team Lead') {
+          // Team Lead sees their own + their team's (salespeople reporting to them)
+          const teamMembers = await User.find({ reportsTo: decoded.userId }).select('_id');
+          const memberIds = teamMembers.map(m => m._id);
+          userFilter = { salesperson: { $in: [decoded.userId, ...memberIds] } };
+        } else if (decoded.role === 'Manager') {
+          // Manager sees their own + everyone reporting to them DIRECTLY or INDIRECTLY
+          // First, get everyone reporting to Manager directly
+          const directReports = await User.find({ reportsTo: decoded.userId });
+          const directIds = directReports.map(m => m._id);
+          
+          // Then, get everyone reporting to those reports (e.g. Salespeople reporting to Team Leads)
+          const indirectReports = await User.find({ reportsTo: { $in: directIds } });
+          const indirectIds = indirectReports.map(m => m._id);
+          
+          userFilter = { salesperson: { $in: [decoded.userId, ...directIds, ...indirectIds] } };
+        }
+        // Super Admin and Admin see everything (userFilter remains {})
       }
     }
 

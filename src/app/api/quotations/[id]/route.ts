@@ -3,6 +3,7 @@ import connectToDatabase from '@/lib/mongodb';
 import Quotation from '@/models/Quotation';
 import Accessory from '@/models/Accessory';
 import Car from '@/models/Car';
+import Customer from '@/models/Customer';
 import User from '@/models/User';
 import { verifyToken } from '@/lib/auth';
 import { cookies } from 'next/headers';
@@ -14,7 +15,7 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
     const { id } = await params;
     
     // Ensure models are registered
-    const _reqModels = [User, Car, Accessory];
+    const _reqModels = [User, Car, Accessory, Customer];
 
     const quotation = await Quotation.findById(id)
       .populate('customer')

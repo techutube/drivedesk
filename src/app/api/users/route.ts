@@ -15,13 +15,46 @@ function decodeJwt(token: string) {
   }
 }
 
-export async function GET() {
+export async function GET(req: Request) {
   try {
     await connectToDatabase();
-    // Exclude passwordHash from response
-    const users = await User.find({}, { passwordHash: 0 }).sort({ createdAt: -1 });
+    
+    // Quick role check for filtering
+    const token = req.headers.get('cookie')?.split('auth_token=')[1]?.split(';')[0];
+    const decoded = token ? decodeJwt(token) : null;
+    
+    let filter = {};
+    if (decoded) {
+      if (decoded.role === 'Manager') {
+        // Manager sees their team
+        const directReports = await User.find({ reportsTo: decoded.userId }).select('_id');
+        const directIds = directReports.map(m => m._id);
+        const indirectReports = await User.find({ reportsTo: { $in: directIds } }).select('_id');
+        const indirectIds = indirectReports.map(m => m._id);
+        filter = { 
+          $or: [
+            { _id: decoded.userId },
+            { reportsTo: decoded.userId },
+            { reportsTo: { $in: directIds } }
+          ]
+        };
+      } else if (decoded.role === 'Team Lead') {
+        filter = { 
+          $or: [
+            { _id: decoded.userId },
+            { reportsTo: decoded.userId }
+          ]
+        };
+      }
+      // Admins see all
+    }
+
+    const users = await User.find(filter, { passwordHash: 0 })
+      .populate('reportsTo', 'name')
+      .sort({ createdAt: -1 });
     return NextResponse.json(users);
   } catch (error) {
+    console.error(error);
     return NextResponse.json({ error: 'Internal Server Error' }, { status: 500 });
   }
 }
@@ -30,7 +63,7 @@ export async function POST(req: Request) {
   try {
     await connectToDatabase();
     const body = await req.json();
-    const { name, email, password, role } = body;
+    const { name, email, password, role, reportsTo } = body;
 
     if (!name || !email || !password) {
       return NextResponse.json({ error: 'Missing required fields' }, { status: 400 });
@@ -56,7 +89,8 @@ export async function POST(req: Request) {
       name,
       email,
       passwordHash: password, 
-      role: role || 'Salesperson'
+      role: role || 'Salesperson',
+      reportsTo: reportsTo || undefined
     });
 
     const { passwordHash: _, ...userResponse } = user.toObject();

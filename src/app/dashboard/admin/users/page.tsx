@@ -7,6 +7,7 @@ type User = {
   name: string;
   email: string;
   role: string;
+  reportsTo?: { _id: string; name: string };
   isActive: boolean;
   createdAt: string;
 };
@@ -18,7 +19,7 @@ export default function UserManagementPage() {
   
   // Form state
   const [showForm, setShowForm] = useState(false);
-  const [formData, setFormData] = useState({ name: '', email: '', password: '', role: 'Salesperson' });
+  const [formData, setFormData] = useState({ name: '', email: '', password: '', role: 'Salesperson', reportsTo: '' });
   const [error, setError] = useState('');
 
   const fetchUsers = async () => {
@@ -59,7 +60,7 @@ export default function UserManagementPage() {
         throw new Error(data.error || 'Failed to create user');
       }
       setShowForm(false);
-      setFormData({ name: '', email: '', password: '', role: 'Salesperson' });
+      setFormData({ name: '', email: '', password: '', role: 'Salesperson', reportsTo: '' });
       fetchUsers();
     } catch (err: any) {
       setError(err.message);
@@ -120,6 +121,7 @@ export default function UserManagementPage() {
               <label>Role</label>
               <select value={formData.role} onChange={e => setFormData({...formData, role: e.target.value})}>
                 <option value="Salesperson">Salesperson</option>
+                <option value="Team Lead">Team Lead</option>
                 <option value="Manager">Manager</option>
                 {currentUserRole === 'Super Admin' && (
                   <>
@@ -127,6 +129,18 @@ export default function UserManagementPage() {
                     <option value="Super Admin">Super Admin</option>
                   </>
                 )}
+              </select>
+            </div>
+            <div className="form-group">
+              <label>Reports To (Manager/Lead)</label>
+              <select 
+                value={formData.reportsTo || ''} 
+                onChange={e => setFormData({...formData, reportsTo: e.target.value})}
+              >
+                <option value="">None (Self Managed)</option>
+                {users.filter(u => u.role === 'Manager' || u.role === 'Team Lead').map(u => (
+                  <option key={u._id} value={u._id}>{u.name} ({u.role})</option>
+                ))}
               </select>
             </div>
             <div className="form-actions">
@@ -156,7 +170,10 @@ export default function UserManagementPage() {
                 <tr key={user._id}>
                   <td>{user.name}</td>
                   <td>{user.email}</td>
-                  <td><span className={`role-badge role-${user.role.toLowerCase().replace(' ', '-')}`}>{user.role}</span></td>
+                  <td>
+                    <span className={`role-badge role-${user.role.toLowerCase().replace(' ', '-')}`}>{user.role}</span>
+                    {user.reportsTo && <div style={{ fontSize: '0.7rem', color: '#666', marginTop: '2px' }}>Reports to: {user.reportsTo.name}</div>}
+                  </td>
                   <td>
                     <span className={`status-badge ${user.isActive ? 'active' : 'inactive'}`}>
                       {user.isActive ? 'Active' : 'Inactive'}
@@ -262,6 +279,7 @@ export default function UserManagementPage() {
         .role-admin { background: #fee2e2; color: #991b1b; }
         .role-super-admin { background: #1e1b4b; color: #c7d2fe; }
         .role-manager { background: #fef3c7; color: #92400e; }
+        .role-team-lead { background: #fae8ff; color: #86198f; }
         .role-salesperson { background: #e0e7ff; color: #3730a3; }
         
         .status-badge {
