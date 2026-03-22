@@ -17,6 +17,14 @@ export default function NewQuotationPage() {
   const [cars, setCars] = useState<any[]>([]);
   const [accessoriesLookup, setAccessoriesLookup] = useState<any[]>([]);
 
+  // Selection state for discounts
+  const [selectedDiscounts, setSelectedDiscounts] = useState({
+    consumer: true,
+    intervention: false,
+    exchange: false,
+    corporate: false
+  });
+
   // Form State
   const [formData, setFormData] = useState({
     customer: '',
@@ -57,6 +65,7 @@ export default function NewQuotationPage() {
           }
           if (parsedDraft.step) setStep(parsedDraft.step);
           if (parsedDraft.hasExchange !== undefined) setHasExchange(parsedDraft.hasExchange);
+          if (parsedDraft.selectedDiscounts) setSelectedDiscounts(parsedDraft.selectedDiscounts);
         } catch (e) {
           console.error("Could not parse saved draft", e);
         }
@@ -65,9 +74,9 @@ export default function NewQuotationPage() {
   }, []);
 
   const handleNext = () => {
-    const nextStep = Math.min(6, step + 1);
+    const nextStep = Math.min(7, step + 1);
     setStep(nextStep);
-    localStorage.setItem('quotationDraft_new', JSON.stringify({ formData, step: nextStep, hasExchange }));
+    localStorage.setItem('quotationDraft_new', JSON.stringify({ formData, step: nextStep, hasExchange, selectedDiscounts }));
   };
   
   const handlePrev = () => setStep(s => Math.max(1, s - 1));
@@ -125,9 +134,10 @@ export default function NewQuotationPage() {
       extendedWarranty: Number(formData.charges.extendedWarranty),
       fastagCharges: formData.charges.fastag === '' ? 550 : Number(formData.charges.fastag),
       dealerDiscount: Number(formData.discounts.dealer),
-      exchangeBonus: Number(formData.discounts.exchangeBonus),
-      corporateDiscount: Number(formData.discounts.corporate),
-      specialDiscount: Number(formData.discounts.festival) + Number(formData.discounts.managerSpecial)
+      exchangeBonus: selectedDiscounts.exchange ? Number(formData.discounts.exchangeBonus) : 0,
+      corporateDiscount: selectedDiscounts.corporate ? Number(formData.discounts.corporate) : 0,
+      specialDiscount: (selectedDiscounts.consumer ? Number(formData.discounts.festival) : 0) + 
+                       (selectedDiscounts.intervention ? Number(formData.discounts.managerSpecial) : 0)
     });
 
     return { ...result, exVal };
@@ -142,6 +152,12 @@ export default function NewQuotationPage() {
         delete (payload as any).exchangeVehicle;
       }
       
+      // Clean up discounts that weren't selected
+      if (!selectedDiscounts.consumer) payload.discounts.festival = 0;
+      if (!selectedDiscounts.intervention) payload.discounts.managerSpecial = 0;
+      if (!selectedDiscounts.exchange) payload.discounts.exchangeBonus = 0;
+      if (!selectedDiscounts.corporate) payload.discounts.corporate = 0;
+
       const res = await fetch('/api/quotations', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -172,7 +188,7 @@ export default function NewQuotationPage() {
           <h2>Quotation Builder</h2>
         </div>
         <div className="step-indicator">
-          Step {step} of 6
+          Step {step} of 7
         </div>
       </div>
 
@@ -345,37 +361,108 @@ export default function NewQuotationPage() {
             </div>
           )}
 
-          {/* STEP 5: DISCOUNTS */}
+          {/* STEP 5: SELECT DISCOUNT TYPES */}
           {step === 5 && (
             <div className="step-content">
-              <h3>Step 5: Apply Discounts</h3>
-              <p className="subtitle text-danger mb-4">Note: Discounts above standard limits require Manager Approval.</p>
+              <h3>Step 5: Select Discount Types</h3>
+              <p className="subtitle mb-4">Choose which discounts you want to apply to this quotation.</p>
               
-              <div className="grid-2">
-                <div className="form-group">
-                  <label>Dealer Discount</label>
-                  <input type="number" min="0" value={formData.discounts.dealer} onChange={e => handleDiscountChange('dealer', e.target.value)} />
-                </div>
-                <div className="form-group">
-                  <label>Exchange Bonus</label>
-                  <input type="number" min="0" value={formData.discounts.exchangeBonus} onChange={e => handleDiscountChange('exchangeBonus', e.target.value)} />
-                </div>
-                <div className="form-group">
-                  <label>Corporate Discount</label>
-                  <input type="number" min="0" value={formData.discounts.corporate} onChange={e => handleDiscountChange('corporate', e.target.value)} />
-                </div>
-                <div className="form-group">
-                  <label>Festival / Other Offer</label>
-                  <input type="number" min="0" value={formData.discounts.festival} onChange={e => handleDiscountChange('festival', e.target.value)} />
-                </div>
+              <div className="checklist-container mt-4">
+                <label className="checkbox-item card-item">
+                  <input 
+                    type="checkbox" 
+                    checked={selectedDiscounts.consumer} 
+                    onChange={e => setSelectedDiscounts({...selectedDiscounts, consumer: e.target.checked})} 
+                  />
+                  <div className="item-details">
+                    <span className="item-title">Consumer offer</span>
+                    <span className="item-sub">Standard promotional discounts for customers.</span>
+                  </div>
+                </label>
+
+                <label className="checkbox-item card-item">
+                  <input 
+                    type="checkbox" 
+                    checked={selectedDiscounts.intervention} 
+                    onChange={e => setSelectedDiscounts({...selectedDiscounts, intervention: e.target.checked})} 
+                  />
+                  <div className="item-details">
+                    <span className="item-title">Intervention discount</span>
+                    <span className="item-sub">Special manager-approved price adjustments.</span>
+                  </div>
+                </label>
+
+                <label className="checkbox-item card-item">
+                  <input 
+                    type="checkbox" 
+                    checked={selectedDiscounts.exchange} 
+                    onChange={e => setSelectedDiscounts({...selectedDiscounts, exchange: e.target.checked})} 
+                  />
+                  <div className="item-details">
+                    <span className="item-title">Exchange</span>
+                    <span className="item-sub">Additional bonus for vehicle trade-ins.</span>
+                  </div>
+                </label>
+
+                <label className="checkbox-item card-item">
+                  <input 
+                    type="checkbox" 
+                    checked={selectedDiscounts.corporate} 
+                    onChange={e => setSelectedDiscounts({...selectedDiscounts, corporate: e.target.checked})} 
+                  />
+                  <div className="item-details">
+                    <span className="item-title">Corporate</span>
+                    <span className="item-sub">Discounts for corporate employees and partners.</span>
+                  </div>
+                </label>
               </div>
             </div>
           )}
 
-          {/* STEP 6: REVIEW */}
+          {/* STEP 6: APPLY DISCOUNTS */}
           {step === 6 && (
             <div className="step-content">
-              <h3>Step 6: Review & Submit</h3>
+              <h3>Step 6: Apply Discounts</h3>
+              <p className="subtitle text-danger mb-4">Note: Discounts above standard limits require Manager Approval.</p>
+              
+              <div className="grid-2">
+                {selectedDiscounts.consumer && (
+                  <div className="form-group">
+                    <label>Consumer offer</label>
+                    <input type="number" min="0" value={formData.discounts.festival} onChange={e => handleDiscountChange('festival', e.target.value)} />
+                  </div>
+                )}
+                {selectedDiscounts.intervention && (
+                  <div className="form-group">
+                    <label>Intervention discount</label>
+                    <input type="number" min="0" value={formData.discounts.managerSpecial} onChange={e => handleDiscountChange('managerSpecial', e.target.value)} />
+                  </div>
+                )}
+                {selectedDiscounts.exchange && (
+                  <div className="form-group">
+                    <label>Exchange Bonus</label>
+                    <input type="number" min="0" value={formData.discounts.exchangeBonus} onChange={e => handleDiscountChange('exchangeBonus', e.target.value)} />
+                  </div>
+                )}
+                {selectedDiscounts.corporate && (
+                  <div className="form-group">
+                    <label>Corporate Discount</label>
+                    <input type="number" min="0" value={formData.discounts.corporate} onChange={e => handleDiscountChange('corporate', e.target.value)} />
+                  </div>
+                )}
+                {!selectedDiscounts.consumer && !selectedDiscounts.intervention && !selectedDiscounts.exchange && !selectedDiscounts.corporate && (
+                  <p className="col-span-2 text-center p-8 bg-light rounded text-secondary italic">
+                    No discount types selected. Go back to select types or click Next to proceed.
+                  </p>
+                )}
+              </div>
+            </div>
+          )}
+
+          {/* STEP 7: REVIEW */}
+          {step === 7 && (
+            <div className="step-content">
+              <h3>Step 7: Review & Submit</h3>
               
               <div className="review-summary mt-4">
                 <div className="review-section">
@@ -419,7 +506,7 @@ export default function NewQuotationPage() {
 
           <div className="wizard-footer">
             <button className="btn btn-outline" onClick={handlePrev} disabled={step === 1 || loading}>Back</button>
-            {step < 6 ? (
+            {step < 7 ? (
               <button 
                 className="btn btn-primary" 
                 onClick={handleNext} 
@@ -640,6 +727,48 @@ export default function NewQuotationPage() {
         .rounded { border-radius: 0.5rem; }
         .text-danger { color: #dc2626; }
         .mb-4 { margin-bottom: 1rem; }
+        .mt-2 { margin-top: 0.5rem; }
+        .mt-4 { margin-top: 1rem; }
+        
+        /* Checklist styles */
+        .checklist-container {
+          display: flex;
+          flex-direction: column;
+          gap: 0.75rem;
+        }
+        .card-item {
+          background: white;
+          border-radius: var(--radius-md);
+          box-shadow: var(--shadow-sm);
+          border: 1px solid var(--border-color);
+          display: flex;
+          align-items: center;
+          padding: 1rem;
+          cursor: pointer;
+          transition: all 0.2s;
+        }
+        .card-item:hover {
+          background-color: #f8fafc;
+          border-color: var(--brand-blue-light);
+        }
+        .item-details {
+          margin-left: 1rem;
+          display: flex;
+          flex-direction: column;
+        }
+        .item-title {
+          font-weight: 700;
+          color: var(--text-primary);
+        }
+        .item-sub {
+          font-size: 0.875rem;
+          color: var(--text-secondary);
+        }
+        .col-full {
+          grid-column: 1 / -1;
+        }
+        .text-center { text-align: center; }
+        .italic { font-style: italic; }
         
         .action-buttons {
           display: flex;

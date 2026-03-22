@@ -80,7 +80,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                 📊 Dashboard
               </Link>
 
-              {(user?.role === 'Super Admin' || user?.role === 'Sales Manager') && (
+              {['Super Admin', 'Owner', 'GM', 'GSM', 'Sales Manager'].includes(user?.role) && (
                 <Link href="/dashboard/approvals" className={`nav-link ${pathname?.includes('/approvals') ? 'active' : ''}`}>
                   ✅ Approvals
                 </Link>

@@ -71,32 +71,22 @@ export async function GET(req: Request) {
         if (decoded.role === 'Owner' || decoded.role === 'Admin' || decoded.role === 'Super Admin' || decoded.role === 'F&I Manager') {
           // These roles see everything
           userFilter = {};
-        } else if (decoded.role === 'GM') {
-          // GM sees all results from GSMs, TLs and Sales Associates in their subtree
-          const gsms = await User.find({ reportsTo: decoded.userId }).select('_id');
-          const gsmIds = gsms.map(u => u._id);
-          const tls = await User.find({ reportsTo: { $in: gsmIds } }).select('_id');
-          const tlIds = tls.map(u => u._id);
-          const associates = await User.find({ reportsTo: { $in: tlIds } }).select('_id');
-          const associateIds = associates.map(u => u._id);
-          
-          userFilter = { salesperson: { $in: [decoded.userId, ...gsmIds, ...tlIds, ...associateIds] } };
-        } else if (decoded.role === 'GSM') {
-          // GSM sees TLs and Associates in their subtree
-          const tls = await User.find({ reportsTo: decoded.userId }).select('_id');
-          const tlIds = tls.map(u => u._id);
-          const associates = await User.find({ reportsTo: { $in: tlIds } }).select('_id');
-          const associateIds = associates.map(u => u._id);
-          
-          userFilter = { salesperson: { $in: [decoded.userId, ...tlIds, ...associateIds] } };
-        } else if (decoded.role === 'Sales Manager') {
-          // Sales Manager sees their associates
-          const associates = await User.find({ reportsTo: decoded.userId }).select('_id');
-          const associateIds = associates.map(u => u._id);
-          userFilter = { salesperson: { $in: [decoded.userId, ...associateIds] } };
         } else {
-          // Sales Associate sees only their own
-          userFilter = { salesperson: decoded.userId };
+          // Recursive subordinate lookup for GM, GSM, SM, TL
+          const getAllSubordinateIds = async (parentId: string): Promise<string[]> => {
+            const directSubordinates = await User.find({ reportsTo: parentId }).select('_id');
+            const directIds = directSubordinates.map(u => u._id.toString());
+            
+            let allSubIds = [...directIds];
+            for (const subId of directIds) {
+              const recursiveIds = await getAllSubordinateIds(subId);
+              allSubIds = [...allSubIds, ...recursiveIds];
+            }
+            return allSubIds;
+          };
+
+          const subordinateIds = await getAllSubordinateIds(decoded.userId);
+          userFilter = { salesperson: { $in: [decoded.userId, ...subordinateIds] } };
         }
       }
     }
@@ -104,7 +94,7 @@ export async function GET(req: Request) {
     const quotations = await Quotation.find(userFilter)
       .populate('customer', 'name phone')
       .populate('car', 'name variant')
-      .populate('salesperson', 'name')
+      .populate('salesperson', 'name email role')
       .sort({ createdAt: -1 });
       
     return NextResponse.json(quotations);

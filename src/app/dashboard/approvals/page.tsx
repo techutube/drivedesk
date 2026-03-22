@@ -7,7 +7,7 @@ type Quotation = {
   quotationNumber: string;
   customer?: { name: string; phone: string };
   car?: { name: string; variant: string };
-  salesperson?: { name: string; email: string };
+  salesperson?: { _id: string; name: string; email: string; role: string };
   pricing: { 
     finalOnRoadPrice: number;
     discountTotal: number;
@@ -201,22 +201,57 @@ export default function ApprovalsPage() {
             </div>
 
             {selectedQuote.status === 'Pending Approval' ? (
-              <div className="action-buttons mt-4">
-                <button 
-                  className="btn btn-danger" 
-                  onClick={() => handleAction('Rejected')}
-                  disabled={actionLoading}
-                >
-                  Reject & Return
-                </button>
-                <button 
-                  className="btn btn-success" 
-                  onClick={() => handleAction('Approved')}
-                  disabled={actionLoading}
-                >
-                  Approve Quotation
-                </button>
-              </div>
+              <>
+                {(() => {
+                  const approverRole = currentUser?.role;
+                  const creatorRole = selectedQuote.salesperson?.role || 'Sales Associate';
+                  const isSelf = selectedQuote.salesperson?._id === (currentUser?.userId || currentUser?._id);
+                  const isOwner = approverRole === 'Owner';
+                  const isGM = approverRole === 'GM';
+                  const isGSM = approverRole === 'GSM';
+                  const isSM = approverRole === 'Sales Manager';
+
+                  let canApprove = false;
+                  if (creatorRole === 'Sales Associate' || creatorRole === 'Team Lead') {
+                    canApprove = isSM || isGSM || isGM || isOwner;
+                  } else if (creatorRole === 'Sales Manager') {
+                    canApprove = isGSM || isGM;
+                  } else if (creatorRole === 'GSM') {
+                    canApprove = isGM;
+                  } else if (creatorRole === 'GM') {
+                    canApprove = isOwner || isSelf;
+                  } else if (creatorRole === 'Owner') {
+                    canApprove = isOwner && isSelf;
+                  }
+
+                  if (canApprove) {
+                    return (
+                      <div className="action-buttons mt-4">
+                        <button 
+                          className="btn btn-danger" 
+                          onClick={() => handleAction('Rejected')}
+                          disabled={actionLoading}
+                        >
+                          Reject & Return
+                        </button>
+                        <button 
+                          className="btn btn-success" 
+                          onClick={() => handleAction('Approved')}
+                          disabled={actionLoading}
+                        >
+                          Approve Quotation
+                        </button>
+                      </div>
+                    );
+                  } else {
+                    return (
+                      <div className="status-message mt-4 info-message">
+                        You can only view this quotation. Approvals follow the reporting hierarchy.
+                      </div>
+                    );
+                  }
+                })()}
+              </>
             ) : (
               <div className="status-message mt-4">
                 This quotation has already been {selectedQuote.status.toLowerCase()}.
@@ -449,6 +484,11 @@ export default function ApprovalsPage() {
           border-radius: var(--radius-sm);
           color: var(--text-secondary);
           font-weight: 500;
+        }
+        .info-message {
+          background: #eff6ff;
+          color: #1e40af;
+          border: 1px solid #bfdbfe;
         }
 
         @media (max-width: 1024px) {

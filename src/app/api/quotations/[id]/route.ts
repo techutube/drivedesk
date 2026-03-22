@@ -21,7 +21,7 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
       .populate('customer')
       .populate('car')
       .populate('accessories')
-      .populate('salesperson', 'name email')
+      .populate('salesperson', 'name email role')
       .populate('history.changedBy', 'name');
       
     if (!quotation) return NextResponse.json({ error: 'Quotation not found' }, { status: 404 });
@@ -102,6 +102,41 @@ export async function PUT(req: Request, { params }: { params: Promise<{ id: stri
     // Detect Changes for History
     const changes: any = {};
     const trackFields = ['status', 'selectedColor', 'managerComments'];
+    
+    // Approval Restriction Logic
+    const isChangingToApproved = body.status === 'Approved' && quotation.status !== 'Approved';
+    if (isChangingToApproved) {
+      // Fetch creator role
+      const creator = await User.findById(quotation.salesperson).select('role');
+      const creatorRole = creator?.role || 'Sales Associate';
+      const approverRole = decoded.role;
+      const isOwner = approverRole === 'Owner';
+      const isGM = approverRole === 'GM';
+      const isGSM = approverRole === 'GSM';
+      const isSM = approverRole === 'Sales Manager';
+      const isSelf = quotation.salesperson.toString() === decoded.userId;
+
+      let canApprove = false;
+
+      if (creatorRole === 'Sales Associate' || creatorRole === 'Team Lead') {
+        canApprove = isSM || isGSM || isGM || isOwner;
+      } else if (creatorRole === 'Sales Manager') {
+        canApprove = isGSM || isGM;
+      } else if (creatorRole === 'GSM') {
+        canApprove = isGM;
+      } else if (creatorRole === 'GM') {
+        canApprove = isOwner || isSelf;
+      } else if (creatorRole === 'Owner') {
+        canApprove = isOwner && isSelf;
+      }
+
+      if (!canApprove) {
+        return NextResponse.json({ 
+          error: `As a ${approverRole}, you are not authorized to approve a quotation created by a ${creatorRole}.` 
+        }, { status: 403 });
+      }
+    }
+
     trackFields.forEach(field => {
       if (body[field] !== undefined && body[field] !== quotation[field]) {
         changes[field] = { from: quotation[field], to: body[field] };
